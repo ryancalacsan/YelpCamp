@@ -20,8 +20,11 @@ const mongoSanitize = require('express-mongo-sanitize');
 const userRoutes = require('./routes/users');
 const campgroundRoutes = require('./routes/campgrounds');
 const reviewRoutes = require('./routes/reviews');
+const MongoStore = require('connect-mongo');
 
-mongoose.connect('mongodb://localhost:27017/yelp-camp', {
+const dbUrl = process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp';
+
+mongoose.connect(dbUrl, {
   useNewUrlParser: true,
   useCreateIndex: true,
   useUnifiedTopology: true,
@@ -45,9 +48,21 @@ app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(mongoSanitize());
 
+const store = MongoStore.create({
+  mongoUrl: dbUrl,
+  touchAfter: 24 * 60 * 60,
+});
+
+store.on('error', function (e) {
+  console.log('SESSION STORE ERROR, e');
+});
+
+const secret = process.env.SECRET || 'thisshouldbeabettersecret!';
+
 const sessionConfig = {
+  store,
   name: 'session',
-  secret: 'thisshouldbeabettersecret!',
+  secret,
   resave: false,
   saveUninitialized: true,
   cookie: {
@@ -62,7 +77,7 @@ app.use(flash());
 app.use(helmet());
 
 const scriptSrcUrls = [
-  'https://stackpath.bootstrapcdn.com/',
+  'https://cdn.jsdelivr.net',
   'https://api.tiles.mapbox.com/',
   'https://api.mapbox.com/',
   'https://kit.fontawesome.com/',
@@ -71,7 +86,7 @@ const scriptSrcUrls = [
 ];
 const styleSrcUrls = [
   'https://kit-free.fontawesome.com/',
-  'https://stackpath.bootstrapcdn.com/',
+  'https://cdn.jsdelivr.net',
   'https://api.mapbox.com/',
   'https://api.tiles.mapbox.com/',
   'https://fonts.googleapis.com/',
